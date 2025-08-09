@@ -10,6 +10,10 @@ inputs:
     description: Working directory of the application
     default: .
     required: false
+  target-env:
+    description: '"dev" or "prod". Controls whether dev dependencies are installed or not'
+    default: 'dev'
+    required: false
 
 runs:
   using: 'composite'
@@ -33,6 +37,6 @@ runs:
       run: |
         rm -f package-lock.json
         npm install
-        npm ci
+        npm ci ${{ inputs.target-env != 'dev' && '--omit=dev' || '' }}
       shell: bash
       working-directory: ${{ inputs.working-directory }}

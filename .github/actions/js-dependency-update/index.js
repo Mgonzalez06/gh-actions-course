@@ -1,5 +1,52 @@
 const core = require('@actions/core');
+const exec = require('@actions/exec');
+
+const validateBranchName = ({ branchName }) => /^[a-zA-Z0-9_\-\.\/]+$/.test(branchName);
+const validateDirectoryName = ({ directoryName }) => /^[a-zA-Z0-9_\-\/]+$/.test(directoryName);
+
 async function run() {
+    const baseBranch = core.getInput('base-branch');
+    const targetBranch = core.getInput('target-branch');
+    const githubToken = core.getInput('github-token');
+    const workingDirectory = core.getInput('working-directory');
+    const debug = core.getInput('debug');
+
+    core.setSecret(githubToken);
+
+    if (!validateBranchName({ branchName: baseBranch })) {
+        core.setFailed(`Invalid base-branch name: ${baseBranch}. Branch names should include only characters, numbers, underscores, hyphens, dots, and slashes.`);
+        return;
+    }
+
+    if (!validateBranchName({ branchName: targetBranch })) {
+        core.setFailed(`Invalid target-branch name: ${targetBranch}. Branch names should include only characters, numbers, underscores, hyphens, dots, and slashes.`);
+        return;
+    }
+
+    if (!validateDirectoryName({ directoryName: workingDirectory })) {
+        core.setFailed(`Invalid working-directory name: ${workingDirectory}. Directory names should include only characters, numbers, underscores, hyphens, and slashes.`);
+        return;
+    }
+
+    core.info(`[js-dependency-update] Base branch is: ${baseBranch}`);
+    core.info(`[js-dependency-update] Target branch is: ${targetBranch}`);
+    core.info(`[js-dependency-update] Working directory is: ${workingDirectory}`);
+
+    await exec.exec('npm update', [], {
+        cwd: workingDirectory,
+    });
+
+    const gitStatus = await exec.getExecOutput('git status -s package*.json', [], {
+        cwd: workingDirectory,
+    });
+
+    if (gitStatus.stdout?.length > 0) {
+        core.info(`[js-dependency-update] There are updates available!`);
+    } else {
+        core.info(`[js-dependency-update] There are no updates available!`);
+    }
+
+
     /*
     1. Parse inputs:
         1.1 base-branch from which to check for updates
